@@ -1,8 +1,13 @@
-const express = require('express')
-const app = express()
-const port = 3001
+const express = require('express');
+const bodyParser = require('body-parser')
+const app = express();
+const port = 3000;
 
-const USERS = [];
+app.use(express.urlencoded({ extended: true }));
+
+const jsonParser = bodyParser.json();
+
+const USERS = [{ email: "test@gmail.com", password: "test123", access: "admin"}];
 
 const QUESTIONS = [{
     title: "Two states",
@@ -13,61 +18,112 @@ const QUESTIONS = [{
     }]
 }];
 
+let testCode = () => {
+  return Math.random() < 0.5;
+}
 
 const SUBMISSION = [
+  {
+    code: "print(Hello World)"
+  }
+];
 
-]
+app.post('/signup', jsonParser, function(req, res) {
+  let userExists = false;
 
-app.post('/signup', function(req, res) {
-  // Add logic to decode body
-  // body should have email and password
+  for (const user of USERS) {
+    if(user.email === req.body.email){
+      userExists = true;
+      break;
+    }
+  }
 
+  if(!userExists){
+    let user = {
+      email: req.body.email,
+      password: req.body.password
+    }
+  
+    USERS.push(user);
+  }
 
-  //Store email and password (as is for now) in the USERS array above (only if the user with the given email doesnt exist)
+  res.status(200);
+  res.send("User saved");
+});
 
+app.post('/login', jsonParser, function(req, res) {
+  let userExists = false;
 
-  // return back 200 status code to the client
-  res.send('Hello World!')
-})
+  for (const user of USERS) {
+    if(user.email === req.body.email){
+      userExists = true;
+      break;
+    }
+  }
 
-app.post('/login', function(req, res) {
-  // Add logic to decode body
-  // body should have email and password
+  if(userExists){
+    const token = "exampletoken";
+    let passwordMatched = false;
 
-  // Check if the user with the given email exists in the USERS array
-  // Also ensure that the password is the same
+    for (const user of USERS) {
+      if(user.password === req.body.password){
+        passwordMatched = true;
+        break;
+      }
+    }
 
+    if(passwordMatched){
+      res.status(200);
+      res.send(token);
+    } else {
+      res.status(401);
+      res.send("Wrong Password");
+    }
 
-  // If the password is the same, return back 200 status code to the client
-  // Also send back a token (any random string will do for now)
-  // If the password is not the same, return back 401 status code to the client
-
-
-  res.send('Hello World from route 2!')
-})
+  } else {
+    res.status(401);
+    res.send("User does not exists");
+  }
+});
 
 app.get('/questions', function(req, res) {
-
-  //return the user all the questions in the QUESTIONS array
-  res.send("Hello World from route 3!")
-})
+  res.json(QUESTIONS);
+});
 
 app.get("/submissions", function(req, res) {
-   // return the users submissions for this problem
-  res.send("Hello World from route 4!")
+  res.json(SUBMISSION);
 });
 
 
-app.post("/submissions", function(req, res) {
-   // let the user submit a problem, randomly accept or reject the solution
-   // Store the submission in the SUBMISSION array above
-  res.send("Hello World from route 4!")
+app.post("/submissions", jsonParser, function(req, res) {
+  let submitedCode = req.body.code;
+
+  if(testCode(submitedCode)){
+    res.send("Solution Accepted");
+  } else {
+    res.send("Solution Rejected");
+  }
+
+  SUBMISSION.push({code: submitedCode});
 });
 
-// leaving as hard todos
-// Create a route that lets an admin add a new problem
-// ensure that only admins can do that.
+app.post('/add-new-problem', jsonParser, (req, res) => {
+
+  if(req.body.access === "admin"){
+    let newProblem = {
+      title: req.body.title,
+      description: req.body.description,
+      testCases: req.body.testCases
+    }
+    QUESTIONS.push(newProblem);
+    res.send("Problem added successfully")
+  } else {
+    res.send("You are not an admin. Only admins can add new problems");
+  }
+
+  console.log(QUESTIONS);
+});
 
 app.listen(port, function() {
   console.log(`Example app listening on port ${port}`)
-})
+});
